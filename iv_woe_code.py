@@ -83,6 +83,19 @@ def iv_woe_4iter(binned_data, target_col, class_col):
     
     return temp_groupby
 
+# Variable Predictiveness based on IV value
+def predictiveness(iv):
+    if iv < 0.02:
+        return 'Not useful for prediction'
+    elif iv >= 0.02 and iv < 0.1:
+        return 'Weak predictive Power'
+    elif iv >= 0.1 and iv < 0.3:
+        return 'Medium predictive Power'
+    elif iv >= 0.3 and iv < 0.5:
+        return 'Strong predictive Power'
+    elif iv >= 0.5:
+        return 'Suspicious Predictive Power'
+        
 """
 - iterate over all features.
 - calculate WOE & IV for there classes.
@@ -135,6 +148,10 @@ def get_iv_woe(data, target_col, max_bins):
     print("Total time elapsed: {} minutes".format(round((time.time() - func_start_time) / 60, 3)))
     iv = iv.merge(binning_remarks, on="feature", how="left")
     woe_iv = woe_iv.merge(iv[["feature", "iv", "remarks"]].rename(columns={"iv": "iv_sum"}), on="feature", how="left")
+    
+    # add predictiveness column
+    woe_iv['variable_predictiveness'] = woe_iv['iv_sum'].apply(lambda x: predictiveness(x))
+    
     print("------------------Binning remarks added and process is complete.------------------")
     print("Total time elapsed: {} minutes".format(round((time.time() - func_start_time) / 60, 3)))
     return iv, woe_iv.replace({"Missing": np.nan})
