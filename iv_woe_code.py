@@ -2,6 +2,7 @@
 # coding: utf-8
 
 import pandas as pd, numpy as np, os, re, math, time
+from scipy.stats import chi2_contingency
 
 # to check monotonicity of a series
 def is_monotonic(temp_series):
@@ -95,6 +96,11 @@ def predictiveness(iv):
         return 'Strong predictive Power'
     elif iv >= 0.5:
         return 'Suspicious Predictive Power'
+# Chi2 p-value calculation
+def chi2_p_value(df, feature):
+    temp_df = df[df['feature']==feature]
+    _, p_value, _, _ = chi2_contingency(np.array([[temp_df['event_count']], [temp_df['non_event_count']]]))
+    return p_value
         
 """
 - iterate over all features.
@@ -152,6 +158,9 @@ def get_iv_woe(data, target_col, max_bins):
     # add predictiveness column
     woe_iv['variable_predictiveness'] = woe_iv['iv_sum'].apply(lambda x: predictiveness(x))
     
+    # chi2 p-value
+    woe_iv['chi2_p_value'] = woe_iv['feature'].apply(lambda x: chi2_p_value(woe_iv, x))
+
     print("------------------Binning remarks added and process is complete.------------------")
     print("Total time elapsed: {} minutes".format(round((time.time() - func_start_time) / 60, 3)))
     return iv, woe_iv.replace({"Missing": np.nan})
