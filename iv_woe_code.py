@@ -98,9 +98,12 @@ def predictiveness(iv):
         return 'Suspicious Predictive Power'
 # Chi2 p-value calculation
 def chi2_p_value(df, feature):
-    temp_df = df[df['feature']==feature]
-    _, p_value, _, _ = chi2_contingency(np.array([[temp_df['event_count']], [temp_df['non_event_count']]]))
-    return p_value
+    try:
+        temp_df = df[(df['feature']==feature) & (df['event_count']!=0) & (df['non_event_count']!=0)]
+        _, p_value, _, _ = chi2_contingency(np.array([[temp_df['event_count']], [temp_df['non_event_count']]]))
+        return p_value
+    except:
+        return 'not applied'
         
 """
 - iterate over all features.
