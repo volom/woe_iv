@@ -46,12 +46,18 @@ def iv_woe_4iter(binned_data, target_col, class_col):
     if "_bins" in class_col:
         binned_data[class_col] = binned_data[class_col].cat.add_categories(['Missing'])
         binned_data[class_col] = binned_data[class_col].fillna("Missing")
-        temp_groupby = binned_data.groupby(class_col).agg({class_col.replace("_bins", ""):["min", "max"],
-                                                           target_col: ["count", "sum", "mean"]}).reset_index()
+        try:
+            temp_groupby = binned_data.groupby(class_col).agg({class_col.replace("_bins", ""):["min", "max"],
+                                                            target_col: ["count", "sum", "mean"]}).reset_index()
+        except TypeError:
+            raise TypeError("(!) Check if your target column consist only of 2 values: 0 and 1")
     else:
         binned_data[class_col] = binned_data[class_col].fillna("Missing")
-        temp_groupby = binned_data.groupby(class_col).agg({class_col:["first", "first"],
-                                                           target_col: ["count", "sum", "mean"]}).reset_index()
+        try:
+            temp_groupby = binned_data.groupby(class_col).agg({class_col:["first", "first"],
+                                                            target_col: ["count", "sum", "mean"]}).reset_index()
+        except TypeError:
+            raise TypeError("(!) Check if your target column consist only of 2 values: 0 and 1")
     
     temp_groupby.columns = ["sample_class", "min_value", "max_value", "sample_count", "event_count", "event_rate"]
     temp_groupby["non_event_count"] = temp_groupby["sample_count"] - temp_groupby["event_count"]
