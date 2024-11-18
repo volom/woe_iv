@@ -130,7 +130,8 @@ def var_iter(data, target_col, max_bins):
                 agg_data = iv_woe_4iter(data[[c_i, target_col]].copy(), target_col, c_i)
                 remarks_list.append({"feature": c_i, "remarks": "categorical"})
             # print("---{} seconds. c_i: {}----".format(round(time.time() - c_i_start_time, 2), c_i))
-            woe_iv = woe_iv.append(agg_data)
+            woe_iv = pd.concat([woe_iv, agg_data], ignore_index=True)
+            
     return woe_iv, pd.DataFrame(remarks_list)
 
 # after getting woe and iv for all classes of features calculate aggregated IV values for features.
