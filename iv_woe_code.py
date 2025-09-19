@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # coding: utf-8
-
 import pandas as pd, numpy as np, os, re, math, time
 from scipy.stats import chi2_contingency
 
@@ -27,9 +26,9 @@ def prepare_bins(bin_data, c_i, target_col, max_bins):
     # ----------------- Force binning -----------------
     # creating 2 bins forcefully because 2 bins will always be monotonic
     if force_bin or (c_i + "_bins" in bin_data and bin_data[c_i + "_bins"].nunique() < 2):
-        _min=bin_data[c_i].min()
-        _mean=bin_data[c_i].mean()
-        _max=bin_data[c_i].max()
+        _min = bin_data[c_i].min()
+        _mean = bin_data[c_i].mean()
+        _max = bin_data[c_i].max()
         bin_data[c_i + "_bins"] = pd.cut(bin_data[c_i], [_min, _mean, _max], include_lowest=True)
         if bin_data[c_i + "_bins"].nunique() == 2:
             binned = True
@@ -65,7 +64,7 @@ def iv_woe_4iter(binned_data, target_col, class_col):
     temp_groupby = temp_groupby[["sample_class", "min_value", "max_value", "sample_count",
                                  "non_event_count", "non_event_rate", "event_count", "event_rate"]]
     
-    if "_bins" not in class_col and "Missing" in temp_groupby["min_value"]:
+    if "_bins" not in class_col and "Missing" in temp_groupby["min_value"].astype(str).values:
         temp_groupby["min_value"] = temp_groupby["min_value"].replace({"Missing": np.nan})
         temp_groupby["max_value"] = temp_groupby["max_value"].replace({"Missing": np.nan})
     temp_groupby["feature"] = class_col
@@ -81,7 +80,6 @@ def iv_woe_4iter(binned_data, target_col, class_col):
     """
     temp_groupby['distbn_non_event'] = temp_groupby["non_event_count"]/temp_groupby["non_event_count"].sum()
     temp_groupby['distbn_event'] = temp_groupby["event_count"]/temp_groupby["event_count"].sum()
-
     temp_groupby['woe'] = np.log(temp_groupby['distbn_event'].astype(float) / temp_groupby['distbn_non_event'].astype(float))
     temp_groupby['iv'] = (temp_groupby['distbn_event'] - temp_groupby['distbn_non_event']) * temp_groupby['woe']
     
@@ -102,11 +100,12 @@ def predictiveness(iv):
         return 'Strong predictive Power'
     elif iv >= 0.5:
         return 'Suspicious Predictive Power'
+
 # Chi2 p-value calculation
 def chi2_p_value(df, feature):
     try:
         temp_df = df[(df['feature']==feature) & (df['event_count']!=0) & (df['non_event_count']!=0)]
-        _, p_value, _, _ = chi2_contingency(np.array([[temp_df['event_count']], [temp_df['non_event_count']]]))
+        _, p_value, _, _ = chi2_contingency(np.array([temp_df['event_count'], temp_df['non_event_count']]))
         return p_value
     except:
         return 'not applied'
@@ -128,7 +127,8 @@ def var_iter(data, target_col, max_bins):
             Note: Make sure dtype of continuous columns in dataframe is not object.
             """
             c_i_start_time=time.time()
-            if np.issubdtype(data[c_i], np.number) and data[c_i].nunique() > 2:
+            # Fixed the np.issubdtype check
+            if pd.api.types.is_numeric_dtype(data[c_i]) and data[c_i].nunique() > 2:
                 class_col, remarks, binned_data = prepare_bins(data[[c_i, target_col]].copy(), c_i, target_col, max_bins)
                 agg_data = iv_woe_4iter(binned_data.copy(), target_col, class_col)
                 remarks_list.append({"feature": c_i, "remarks": remarks})
@@ -147,7 +147,7 @@ def get_iv_woe(data, target_col, max_bins):
     print("------------------IV and WOE calculated for individual groups.------------------")
     print("Total time elapsed: {} minutes".format(round((time.time() - func_start_time) / 60, 3)))
     
-    woe_iv["feature"] = woe_iv["feature"].replace("_bins", "", regex=True)    
+    woe_iv["feature"] = woe_iv["feature"].str.replace("_bins", "", regex=True)    
     woe_iv = woe_iv[["feature", "sample_class", "sample_class_label", "sample_count", "min_value", "max_value",
                      "non_event_count", "non_event_rate", "event_count", "event_rate", 'distbn_non_event',
                      'distbn_event', 'woe', 'iv']]
@@ -170,7 +170,6 @@ def get_iv_woe(data, target_col, max_bins):
     
     # chi2 p-value
     woe_iv['chi2_p_value'] = woe_iv['feature'].apply(lambda x: chi2_p_value(woe_iv, x))
-
     print("------------------Binning remarks added and process is complete.------------------")
     print("Total time elapsed: {} minutes".format(round((time.time() - func_start_time) / 60, 3)))
     return iv, woe_iv.replace({"Missing": np.nan})
